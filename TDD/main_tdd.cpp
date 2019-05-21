@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include "segger_wrapper.h"
 #include "unit_testing.hpp"
+#include "Simulator.hpp"
 
 
 #include <fenv.h> // For feenableexcept
@@ -102,6 +103,13 @@ int main(void)
 		exit(__LINE__);
 	}
 
+	simulator_init();
+
+	simulator_run();
+
+	LOG_INFO("End of program");
+
+	return 0;
 }
 
 

@@ -29,6 +29,7 @@ include_directories(
 # Cree des variables avec les fichiers a compiler
 set(SRCS
     TDD/main_tdd.cpp
+    TDD/Simulator.cpp
     unit_testing.cpp
 	source/kalman/kalman_ext.cpp
 	source/kalman/UDMatrix.cpp
