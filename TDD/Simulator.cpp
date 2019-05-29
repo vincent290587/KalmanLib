@@ -104,9 +104,9 @@ static void _update_state(float slo) {
 
 	m_sim_state.alt += SIM_DT * m_sim_state.speed * tan(slo);
 
-	m_sim_state.acc[0] = 9.81f * cos(slo + m_sim_state.tilt);
+	m_sim_state.acc[0] = 9.81f * cosf(slo + m_sim_state.tilt);
 	m_sim_state.acc[1] = 0.0f;
-	m_sim_state.acc[2] = 9.81f * sin(slo + m_sim_state.tilt);
+	m_sim_state.acc[2] = 9.81f * sinf(slo + m_sim_state.tilt);
 
 }
 
@@ -135,10 +135,10 @@ static void _simulate_sensors(void) {
 		m_sens_state.acc[i] = m_sim_state.acc[i] + distr_acc(generator);
 
 	printf("%.3f %.3f %.3f %.3f\n",
-			m_sens_state.speed,
 			m_sens_state.bar_alt,
-			m_sens_state.acc[0],
-			m_sens_state.acc[2]);
+			m_sens_state.gps_alt,
+			m_sens_state.speed,
+			atan2f(m_sim_state.acc[2], m_sim_state.acc[0]));
 }
 
 void simulator_init(void) {
@@ -153,39 +153,70 @@ void simulator_init(void) {
 	// set tilt
 	m_sim_state.tilt = 6.8_deg;
 
-	// TODO Kalman init
+	// Kalman init
 
-	descr.ker.ker_dim = 3;
-	descr.ker.obs_dim = 1;
+	descr.ker.ker_dim = 5;
+	descr.ker.obs_dim = 4;
 
 	feed.dt = SIM_DT;
 
 	kalman_ext_init(&descr);
 
-	feed.matZ.resize(1, 1);
+	/*
+	 * Observations vector
+	 *
+	 *      ( h_b
+	 * Z =  ( h_gps
+	 *      ( speed
+	 *      ( a_y / a_x
+	 */
+
+	feed.matZ.resize(descr.ker.obs_dim, 1);
+
+	/*
+	 * State equations:
+	 *
+	 * h(n+1) = h(n) + v.dt.tan(a)
+	 *
+	 * h_b   = h
+	 * h_gps = h + d_h
+	 *
+	 * a_y / a_x = (tan(a) + tan(a0)) / (1 - tan(a).tan(a0))
+	 *
+	 *      ( h
+	 *      ( d_h
+	 *  X=  ( v
+	 *      ( tan(a)
+	 *      ( tan(a0)
+	 *
+	 */
 
 	// set A (it must be the jacobian matrix)
 	// first val: A1 = dState1 / dState[co]
 	descr.ker.matA.unity();
-
-//	descr.ker.matA.set(1, 2, -omega * feed.dt);
-//	descr.ker.matA.set(2, 1, omega * feed.dt);
-
-	descr.ker.matA.print();
 
 	// H maps the state vector to the measurements
 	// first val: H1 = dMesure1 / dState[co]
 	// i.e. expected measurements knowing X
 	descr.ker_ext.matH.ones(0.0);
 
-	// set Q
-	descr.ker.matQ.unity(1 / 20.);
+	// set Q: model noise (or stability)
+	descr.ker.matQ.ones(0);
+	descr.ker.matQ.set(0, 0, 0.5);
+	descr.ker.matQ.set(1, 1, 0.01);
+	descr.ker.matQ.set(2, 2, 1);
+	descr.ker.matQ.set(3, 3, 0.1);
+	descr.ker.matQ.set(4, 4, 0.001);
 
 	// set P
 	descr.ker.matP.ones(900);
 
-	// set R
-	descr.ker.matR.unity(0.01);
+	// set R: environment noise
+	descr.ker.matR.ones(0);
+	descr.ker.matR.set(0, 0, 0.5);
+	descr.ker.matR.set(1, 1, 10);
+	descr.ker.matR.set(2, 2, 1.5_kmh);
+	descr.ker.matR.set(3, 3, 0.5);
 
 	// set Z
 	feed.matZ.ones(0.0);
@@ -199,18 +230,61 @@ void simulator_task(void) {
 
 	_simulate_sensors();
 
-	// TODO Kalman work
+	// Kalman work
 
-	float val = 14;
+	/*
+	 * Observations vector
+	 *
+	 *      ( h_b
+	 * Z =  ( h_gps
+	 *      ( speed
+	 *      ( a_x / a_z
+	 */
 
-	feed.matZ.set(0, 0, val);
+	feed.matZ.set(0, 0, m_sens_state.bar_alt);
+	feed.matZ.set(1, 0, m_sens_state.gps_alt);
+	feed.matZ.set(2, 0, m_sens_state.speed);
+	feed.matZ.set(3, 0, m_sens_state.acc[2] / m_sens_state.acc[0]);
 
-	descr.ker_ext.matH.set(0, 0, 1);
-	descr.ker_ext.matH.set(0, 1, 2);
-	descr.ker_ext.matH.set(0, 2, 3);
+	/*
+	 *      ( h
+	 *      ( d_h
+	 *  X=  ( v
+	 *      ( tan(a)
+	 *      ( tan(a0)
+	 *
+	 */
+
+	// set A (it must be the jacobian matrix)
+	// first val: A1 = dState1 / dState[co]
+	descr.ker.matA.unity();
+	descr.ker.matA.set(0, 2, descr.ker.matX.get(3, 0) * feed.dt);
+	descr.ker.matA.set(0, 3, descr.ker.matX.get(2, 0) * feed.dt);
+
+	// set H
+	// it must be the jacobian matrix
+	// first line: dZ1 / dState[co]
+	descr.ker_ext.matH.ones(0);
+	descr.ker_ext.matH.set(0, 0, 1); // h_b
+
+	descr.ker_ext.matH.set(1, 0, 1); // h_gps
+	descr.ker_ext.matH.set(1, 1, 1);
+
+	descr.ker_ext.matH.set(2, 2, 1); // speed
+
+	float deriv = (1 - descr.ker.matX.get(4, 0));
+	deriv /= powf(1 - descr.ker.matX.get(3, 0) * descr.ker.matX.get(4, 0), 2);
+
+	descr.ker_ext.matH.set(3, 3, deriv); // a_y / a_x
+
+	deriv = (1 - descr.ker.matX.get(3, 0));
+	deriv /= powf(1 - descr.ker.matX.get(3, 0) * descr.ker.matX.get(4, 0), 2);
+
+	descr.ker_ext.matH.set(3, 4, deriv);
 
 	kalman_ext_feed(&descr, &feed);
 
+	// print state vector
 	UDMatrix res;
 	res = descr.ker.matX;
 	res.print();
