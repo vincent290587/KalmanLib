@@ -66,7 +66,7 @@ void signalHandler( int signum, struct sigcontext ctx) {
     	printf("[bt] #%d %s\n", i, messages[i]);
 
     	char syscom[256];
-    	sprintf(syscom,"addr2line %p -e sighandler", array[i]); //last parameter is the name of this app
+    	sprintf(syscom,"addr2line %p -e KalmanTester", array[i]); //last parameter is the name of this app
     	system(syscom);
     }
 
