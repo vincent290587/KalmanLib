@@ -15,7 +15,7 @@
 #include "UDMatrix.h"
 #include "kalman_ext.h"
 
-#define SIM_DT     0.5f
+#define SIM_DT     0.3f
 
 typedef enum {
 	eSlopeStateDownhill,
@@ -116,9 +116,9 @@ static void _simulate_sensors(void) {
 
 	static std::default_random_engine generator;
 
-	static std::normal_distribution<float> distr_speed(0.0, 1.5_kmh);
+	static std::normal_distribution<float> distr_speed(0.0, 0.5_kmh);
 
-	static std::normal_distribution<float> distr_altg(0.0, 10.0);
+	static std::normal_distribution<float> distr_altg(0.0, 1.0);
 	static std::normal_distribution<float> distr_altb(0.0, 0.5);
 
 	static std::normal_distribution<float> distr_acc(0.0, 2.0);
@@ -134,11 +134,11 @@ static void _simulate_sensors(void) {
 	for (int i=0; i < 3; i++)
 		m_sens_state.acc[i] = m_sim_state.acc[i] + distr_acc(generator);
 
-	printf("%.3f %.3f %.3f %.3f\n",
+	printf(">%.3f %.3f %.3f %.3f ",
 			m_sens_state.bar_alt,
 			m_sens_state.gps_alt,
 			m_sens_state.speed,
-			atan2f(m_sim_state.acc[2], m_sim_state.acc[0]));
+			m_sim_state.acc[2] / m_sim_state.acc[0]);
 }
 
 void simulator_init(void) {
@@ -155,20 +155,20 @@ void simulator_init(void) {
 
 	// Kalman init
 
-	descr.ker.ker_dim = 5;
-	descr.ker.obs_dim = 4;
+	descr.ker.ker_dim = 4;
+	descr.ker.obs_dim = 3;
 
 	feed.dt = SIM_DT;
 
-	kalman_ext_init(&descr);
+	kalman_lin_init(&descr);
 
 	/*
 	 * Observations vector
 	 *
 	 *      ( h_b
 	 * Z =  ( h_gps
-	 *      ( speed
-	 *      ( a_y / a_x
+	 *      ( v
+	 *
 	 */
 
 	feed.matZ.resize(descr.ker.obs_dim, 1);
@@ -176,50 +176,62 @@ void simulator_init(void) {
 	/*
 	 * State equations:
 	 *
-	 * h(n+1) = h(n) + v.dt.tan(a)
+	 * h(n+1) = h(n) + h_p.dt
 	 *
-	 * h_b   = h
-	 * h_gps = h + d_h
+	 * h_b   = h + d_h
+	 * h_gps = h
 	 *
-	 * a_y / a_x = (tan(a) + tan(a0)) / (1 - tan(a).tan(a0))
 	 *
 	 *      ( h
 	 *      ( d_h
 	 *  X=  ( v
-	 *      ( tan(a)
-	 *      ( tan(a0)
+	 *      ( h_p
 	 *
 	 */
 
-	// set A (it must be the jacobian matrix)
-	// first val: A1 = dState1 / dState[co]
+	// set A (it must be the state transition matrix)
 	descr.ker.matA.unity();
+	descr.ker.matA.set(0, 3, feed.dt);
 
-	// H maps the state vector to the measurements
-	// first val: H1 = dMesure1 / dState[co]
-	// i.e. expected measurements knowing X
-	descr.ker_ext.matH.ones(0.0);
+	descr.ker.matA.print("A");
+
+	// Innov = Z - C * X
+	// It maps observations to the state vector
+	descr.ker.matC.ones(0);
+	descr.ker.matC.set(0, 0, 1);
+	descr.ker.matC.set(0, 1, 1);
+	descr.ker.matC.set(1, 0, 1);
+	descr.ker.matC.set(2, 2, 1);
+//	descr.ker.matC.set(3, 3, 1);
+//	descr.ker.matC.set(3, 4, 1);
+
+	descr.ker.matC.print("C");
 
 	// set Q: model noise (or stability)
 	descr.ker.matQ.ones(0);
 	descr.ker.matQ.set(0, 0, 0.5);
-	descr.ker.matQ.set(1, 1, 0.01);
-	descr.ker.matQ.set(2, 2, 1);
-	descr.ker.matQ.set(3, 3, 0.1);
-	descr.ker.matQ.set(4, 4, 0.001);
+	descr.ker.matQ.set(1, 1, 0.001);
+	descr.ker.matQ.set(2, 2, 0.2);
+	descr.ker.matQ.set(3, 3, 0.01);
+//	descr.ker.matQ.set(4, 4, 0.0001);
 
 	// set P
 	descr.ker.matP.ones(900);
 
 	// set R: environment noise
 	descr.ker.matR.ones(0);
-	descr.ker.matR.set(0, 0, 0.5);
-	descr.ker.matR.set(1, 1, 10);
-	descr.ker.matR.set(2, 2, 1.5_kmh);
-	descr.ker.matR.set(3, 3, 0.5);
+	descr.ker.matR.set(0, 0, 0.25);
+	descr.ker.matR.set(1, 1, 2);
+	descr.ker.matR.set(2, 2, 0.5_kmh);
+//	descr.ker.matR.set(3, 3, 0.3);
 
-	// set Z
-	feed.matZ.ones(0.0);
+	// set X
+	descr.ker.matX.set(0, 0, 500);
+	descr.ker.matX.set(1, 0, 150);
+	descr.ker.matX.set(2, 0, 10.0_kmh);
+	descr.ker.matX.set(3, 0, 0);
+//	descr.ker.matX.set(4, 0, 6.8_deg);
+
 }
 
 void simulator_task(void) {
@@ -238,56 +250,24 @@ void simulator_task(void) {
 	 *      ( h_b
 	 * Z =  ( h_gps
 	 *      ( speed
-	 *      ( a_x / a_z
+	 *      ( h_p
 	 */
+	//float meas_hp = feed.dt * m_sens_state.speed * m_sens_state.acc[2] / m_sens_state.acc[0];
 
 	feed.matZ.set(0, 0, m_sens_state.bar_alt);
 	feed.matZ.set(1, 0, m_sens_state.gps_alt);
 	feed.matZ.set(2, 0, m_sens_state.speed);
-	feed.matZ.set(3, 0, m_sens_state.acc[2] / m_sens_state.acc[0]);
+//	feed.matZ.set(3, 0, meas_hp);
 
-	/*
-	 *      ( h
-	 *      ( d_h
-	 *  X=  ( v
-	 *      ( tan(a)
-	 *      ( tan(a0)
-	 *
-	 */
-
-	// set A (it must be the jacobian matrix)
-	// first val: A1 = dState1 / dState[co]
-	descr.ker.matA.unity();
-	descr.ker.matA.set(0, 2, descr.ker.matX.get(3, 0) * feed.dt);
-	descr.ker.matA.set(0, 3, descr.ker.matX.get(2, 0) * feed.dt);
-
-	// set H
-	// it must be the jacobian matrix
-	// first line: dZ1 / dState[co]
-	descr.ker_ext.matH.ones(0);
-	descr.ker_ext.matH.set(0, 0, 1); // h_b
-
-	descr.ker_ext.matH.set(1, 0, 1); // h_gps
-	descr.ker_ext.matH.set(1, 1, 1);
-
-	descr.ker_ext.matH.set(2, 2, 1); // speed
-
-	float deriv = (1 - descr.ker.matX.get(4, 0));
-	deriv /= powf(1 - descr.ker.matX.get(3, 0) * descr.ker.matX.get(4, 0), 2);
-
-	descr.ker_ext.matH.set(3, 3, deriv); // a_y / a_x
-
-	deriv = (1 - descr.ker.matX.get(3, 0));
-	deriv /= powf(1 - descr.ker.matX.get(3, 0) * descr.ker.matX.get(4, 0), 2);
-
-	descr.ker_ext.matH.set(3, 4, deriv);
-
-	kalman_ext_feed(&descr, &feed);
+	// feed filter
+	kalman_lin_feed(&descr, &feed);
 
 	// print state vector
 	UDMatrix res;
-	res = descr.ker.matX;
+	res = descr.ker.matX.transpose();
 	res.print();
+
+//	exit(0);
 }
 
 void simulator_run(void) {
