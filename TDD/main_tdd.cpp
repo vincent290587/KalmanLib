@@ -45,18 +45,31 @@ void print_backtrace(void)
     free(bt_syms);
 }
 
-void signalHandler( int signum ) {
+void signalHandler( int signum, struct sigcontext ctx) {
 
     printf("Interrupt signal %d received.\n", signum);
 
     // Get a back trace
-    void *array[10];
+    void *array[16];
     size_t size;
 
     // get void*'s for all entries on the stack
-    size = backtrace(array, 10);
+    size = backtrace(array, 16);
 
-    backtrace_symbols_fd(array, size, STDERR_FILENO);
+    char **messages = (char **)NULL;
+    messages = backtrace_symbols(array, size);
+
+//    array[1] = (void *)ctx.eip;
+
+    for (int i=1; i< size; ++i)
+    {
+    	printf("[bt] #%d %s\n", i, messages[i]);
+
+    	char syscom[256];
+    	sprintf(syscom,"addr2line %p -e sighandler", array[i]); //last parameter is the name of this app
+    	system(syscom);
+    }
+
 
     print_backtrace();
 
@@ -90,12 +103,19 @@ int main(void)
 
 	// Install the trap handler
 	// register signal SIGINT and signal handler
-	signal(SIGFPE, signalHandler);
-	signal(SIGSEGV, signalHandler);
-	signal(SIGABRT, signalHandler);
+//	signal(SIGFPE, signalHandler);
+//	signal(SIGSEGV, signalHandler);
+//	signal(SIGABRT, signalHandler);
 
-	// pipe handler
-	signal(SIGPIPE, pipeHandler);
+	/* Install our signal handler */
+	struct sigaction sa;
+
+	sa.sa_handler = (void *)signalHandler;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = SA_RESTART;
+
+	sigaction(SIGFPE, &sa, NULL);
+	sigaction(SIGSEGV, &sa, NULL);
 
 	LOG_INFO("Unit testing...");
 

@@ -206,6 +206,8 @@ UDMatrix UDMatrix::invert() {
 			if (j != i) {
 
 				temp = t_mat.m_data[j][i] / t_mat.m_data[i][i];
+				ASSERT (temp != (udm_type_t)0);
+
 				for (unsigned k = 0; k < 2 * order; k++) {
 
 					t_mat.m_data[j][k] -= t_mat.m_data[i][k] * temp;
