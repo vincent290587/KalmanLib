@@ -12,6 +12,8 @@ bool test_sine_fitting(void);
 
 bool test_kalman_ext(void);
 
+bool test_kalman_lin(void);
+
 bool test_power_zone(void);
 
 bool test_lsq(void);

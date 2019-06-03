@@ -132,14 +132,17 @@ void UDMatrix::mul(udm_type_t val) {
 
 }
 
-void UDMatrix::print(void) {
+void UDMatrix::print(const char *str) {
 
-	LOG_RAW_INFO("----------  Matrix ---------------");
-	LOG_RAW_INFO("\r\n");
+	if (str) {
+		LOG_RAW_INFO("----------  %s  ---------------", str);
+		LOG_RAW_INFO("\r\n");
+	}
+
 	for (unsigned i=0; i< this->m_rowSize; i++) {
 		for (unsigned j=0; j< this->m_colSize; j++) {
 
-			LOG_RAW_INFO("%3.3f ", this->m_data[i][j] );
+			LOG_RAW_INFO("%4f ", this->m_data[i][j] );
 
 		}
 		LOG_RAW_INFO("\r\n");
@@ -216,10 +219,8 @@ UDMatrix UDMatrix::invert() {
 	for (unsigned i = 0; i < order; i++) {
 
 		temp = t_mat.m_data[i][i];
-		if (temp == (udm_type_t)0) {
-			LOG_ERROR("Not inversible");
-			temp = 9999999;
-		}
+		ASSERT (temp != (udm_type_t)0);
+
 		for (unsigned j = 0; j < order; j++) {
 
 			res.m_data[i][j] = t_mat.m_data[i][j+order] / temp;

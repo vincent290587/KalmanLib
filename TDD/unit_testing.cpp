@@ -111,10 +111,12 @@ bool test_kalman_lin(void) {
 	feed.matZ.resize(1, 1);
 
 	descr.ker.matA.unity();
+	descr.ker.matA.set(0, 1, feed.dt);
+	descr.ker.matA.print("A");
 
-	descr.ker.matA.print();
-
+	// Z = C * X
 	descr.ker.matC.set(0, 0, 1);
+	descr.ker.matC.print("C");
 
 	// set Q
 	descr.ker.matQ.unity(1 / 20.);
@@ -130,8 +132,6 @@ bool test_kalman_lin(void) {
 	{
 		val = 22 +  5 * i;
 
-		descr.ker.matA.set(0, 1, feed.dt);
-
 		feed.matZ.ones(0.0);
 		feed.matZ.set(0, 0, val);
 
@@ -139,7 +139,7 @@ bool test_kalman_lin(void) {
 
 		UDMatrix res;
 		res = descr.ker.matX;
-		res.print();
+		res.print("X");
 	}
 
 	return true;

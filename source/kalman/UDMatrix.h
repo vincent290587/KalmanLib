@@ -27,7 +27,7 @@ public:
 	void unity(udm_type_t res = (udm_type_t)1);
 	void ones(udm_type_t res = (udm_type_t)1);
 	void zeros(void);
-	void print(void);
+	void print(const char *str = nullptr);
 	void div(udm_type_t val);
 	void mul(udm_type_t val);
 	void resize(unsigned _rowSize, unsigned _colSize);
