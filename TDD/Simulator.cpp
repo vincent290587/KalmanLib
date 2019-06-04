@@ -119,7 +119,7 @@ static void _simulate_sensors(void) {
 	static std::normal_distribution<float> distr_speed(0.0, 0.5_kmh);
 
 	static std::normal_distribution<float> distr_altg(0.0, 1.0);
-	static std::normal_distribution<float> distr_altb(0.0, 0.5);
+	static std::normal_distribution<float> distr_altb(153.0, 0.5);
 
 	static std::normal_distribution<float> distr_acc(0.0, 2.0);
 
@@ -127,7 +127,7 @@ static void _simulate_sensors(void) {
 
 	m_sens_state.speed = m_sim_state.speed + distr_speed(generator);
 
-	m_sens_state.bar_alt = m_sim_state.alt + 153. + distr_altb(generator);
+	m_sens_state.bar_alt = m_sim_state.alt + distr_altb(generator);
 
 	m_sens_state.gps_alt = m_sim_state.alt + distr_altg(generator);
 

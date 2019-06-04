@@ -32,6 +32,9 @@ public:
 	void mul(udm_type_t val);
 	void resize(unsigned _rowSize, unsigned _colSize);
 
+	void normalize(void);
+	void bound(udm_type_t min_val, udm_type_t max_val);
+
 	UDMatrix operator+(UDMatrix &s_mat);
 	UDMatrix operator-(UDMatrix &s_mat);
 	UDMatrix operator*(UDMatrix &s_mat);
