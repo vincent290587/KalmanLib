@@ -165,7 +165,7 @@ UDMatrix UDMatrix::invert() {
 	const unsigned order = this->m_rowSize;
 	UDMatrix res(this->m_rowSize, this->m_rowSize);
 
-	UDMatrix t_mat(this->m_rowSize, 2*this->m_rowSize);
+	UDMatrix t_mat(this->m_rowSize, 2 * this->m_rowSize);
 
 	// Create the augmented matrix
 	// Add the identity matrix
@@ -209,7 +209,6 @@ UDMatrix UDMatrix::invert() {
 			if (j != i) {
 
 				temp = t_mat.m_data[j][i] / t_mat.m_data[i][i];
-				ASSERT (temp != (udm_type_t)0);
 
 				for (unsigned k = 0; k < 2 * order; k++) {
 
@@ -224,11 +223,12 @@ UDMatrix UDMatrix::invert() {
 	for (unsigned i = 0; i < order; i++) {
 
 		temp = t_mat.m_data[i][i];
-		ASSERT (temp != (udm_type_t)0);
+		ASSERT (std::isnormal(temp));
 
 		for (unsigned j = 0; j < order; j++) {
 
 			res.m_data[i][j] = t_mat.m_data[i][j+order] / temp;
+
 		}
 	}
 
