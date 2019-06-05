@@ -134,11 +134,11 @@ static void _simulate_sensors(void) {
 	for (int i=0; i < 3; i++)
 		m_sens_state.acc[i] = m_sim_state.acc[i] + distr_acc(generator);
 
-	printf("%.3f %.3f %.3f %.3f\n",
+	printf(">%.3f %.3f %.3f %.3f ",
 			m_sens_state.bar_alt,
 			m_sens_state.gps_alt,
 			m_sens_state.speed,
-			atan2f(m_sim_state.acc[2], m_sim_state.acc[0]));
+			m_sim_state.acc[2], m_sim_state.acc[0]);
 }
 
 void simulator_init(void) {
@@ -178,8 +178,8 @@ void simulator_init(void) {
 	 *
 	 * h(n+1) = h(n) + v.dt.tan(a)
 	 *
-	 * h_b   = h
-	 * h_gps = h + d_h
+	 * h_b   = h + d_h
+	 * h_gps = h
 	 *
 	 * a_y / a_x = (tan(a) + tan(a0)) / (1 - tan(a).tan(a0))
 	 *
@@ -266,9 +266,9 @@ void simulator_task(void) {
 	// first line: dZ1 / dState[co]
 	descr.ker_ext.matH.ones(0);
 	descr.ker_ext.matH.set(0, 0, 1); // h_b
+	descr.ker_ext.matH.set(0, 1, 1);
 
 	descr.ker_ext.matH.set(1, 0, 1); // h_gps
-	descr.ker_ext.matH.set(1, 1, 1);
 
 	descr.ker_ext.matH.set(2, 2, 1); // speed
 
@@ -286,7 +286,7 @@ void simulator_task(void) {
 
 	// print state vector
 	UDMatrix res;
-	res = descr.ker.matX;
+	res = descr.ker.matX.transpose();
 	res.print();
 }
 
