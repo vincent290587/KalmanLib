@@ -155,8 +155,8 @@ void simulator_init(void) {
 
 	// Kalman init
 
-	descr.ker.ker_dim = 4;
-	descr.ker.obs_dim = 3;
+	descr.ker.ker_dim = 5;
+	descr.ker.obs_dim = 5;
 
 	feed.dt = SIM_DT;
 
@@ -168,6 +168,8 @@ void simulator_init(void) {
 	 *      ( h_b
 	 * Z =  ( h_gps
 	 *      ( v
+	 *      ( a_0
+	 *      ( h_p
 	 *
 	 */
 
@@ -186,6 +188,7 @@ void simulator_init(void) {
 	 *      ( d_h
 	 *  X=  ( v
 	 *      ( h_p
+	 *      ( a_0
 	 *
 	 */
 
@@ -202,8 +205,8 @@ void simulator_init(void) {
 	descr.ker.matC.set(0, 1, 1);
 	descr.ker.matC.set(1, 0, 1);
 	descr.ker.matC.set(2, 2, 1);
-//	descr.ker.matC.set(3, 3, 1);
-//	descr.ker.matC.set(3, 4, 1);
+	descr.ker.matC.set(3, 4, 1);
+	descr.ker.matC.set(4, 3, 1);
 
 	descr.ker.matC.print("C");
 
@@ -212,8 +215,8 @@ void simulator_init(void) {
 	descr.ker.matQ.set(0, 0, 0.5);
 	descr.ker.matQ.set(1, 1, 0.001);
 	descr.ker.matQ.set(2, 2, 0.2);
-	descr.ker.matQ.set(3, 3, 0.01);
-//	descr.ker.matQ.set(4, 4, 0.0001);
+	descr.ker.matQ.set(3, 3, 0.05);
+	descr.ker.matQ.set(4, 4, 0.0001);
 
 	// set P
 	descr.ker.matP.ones(900);
@@ -223,14 +226,15 @@ void simulator_init(void) {
 	descr.ker.matR.set(0, 0, 0.25);
 	descr.ker.matR.set(1, 1, 2);
 	descr.ker.matR.set(2, 2, 0.5_kmh);
-//	descr.ker.matR.set(3, 3, 0.3);
+	descr.ker.matR.set(3, 3, 1);
+	descr.ker.matR.set(4, 4, 1);
 
 	// set X
 	descr.ker.matX.set(0, 0, 500);
 	descr.ker.matX.set(1, 0, 150);
 	descr.ker.matX.set(2, 0, 10.0_kmh);
 	descr.ker.matX.set(3, 0, 0);
-//	descr.ker.matX.set(4, 0, 6.8_deg);
+	descr.ker.matX.set(4, 0, 0);
 
 }
 
@@ -250,14 +254,28 @@ void simulator_task(void) {
 	 *      ( h_b
 	 * Z =  ( h_gps
 	 *      ( speed
+	 *      ( a_0
 	 *      ( h_p
 	 */
-	//float meas_hp = feed.dt * m_sens_state.speed * m_sens_state.acc[2] / m_sens_state.acc[0];
+
+	static float meas_a0 = 0;
+	static float prev_alt = m_sens_state.bar_alt;
+
+	float meas_hp = m_sens_state.bar_alt - prev_alt;
+	float i_h0 = atan2(m_sim_state.acc[2], m_sim_state.acc[0]) - atan2(meas_hp, feed.dt * m_sens_state.speed);
+	meas_a0 = 0.5 * meas_a0 + 0.5 * (i_h0);
+
+	prev_alt = m_sens_state.bar_alt;
+
+	meas_hp = m_sens_state.speed * tan(atan2(m_sim_state.acc[2], m_sim_state.acc[0]) - meas_a0);
+
+//	printf("Meas hp: %f\n", meas_hp);
 
 	feed.matZ.set(0, 0, m_sens_state.bar_alt);
 	feed.matZ.set(1, 0, m_sens_state.gps_alt);
 	feed.matZ.set(2, 0, m_sens_state.speed);
-//	feed.matZ.set(3, 0, meas_hp);
+	feed.matZ.set(3, 0, meas_a0);
+	feed.matZ.set(4, 0, meas_hp);
 
 	// feed filter
 	kalman_lin_feed(&descr, &feed);
