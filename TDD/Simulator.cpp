@@ -90,8 +90,8 @@ static float _simulate_slope(void) {
 		m_sim_state.speed = 22.0_kmh;
 		break;
 	case eSlopeStateUphill:
-		val = 5.0_deg;
-		m_sim_state.speed = 12.5_kmh;
+		val = 10.0_deg;
+		m_sim_state.speed = 15.0_kmh;
 		break;
 	default:
 		break;
@@ -209,10 +209,12 @@ void simulator_init(void) {
 
 	// set Q: model noise (or stability)
 	descr.ker.matQ.ones(0);
-	descr.ker.matQ.set(0, 0, 0.5);
+	descr.ker.matQ.set(0, 0, 0.25);
+	descr.ker.matQ.set(0, 3, 0.5);
+	descr.ker.matQ.set(3, 0, 0.5);
 	descr.ker.matQ.set(1, 1, 0.001);
-	descr.ker.matQ.set(2, 2, 0.2);
-	descr.ker.matQ.set(3, 3, 0.01);
+	descr.ker.matQ.set(2, 2, 0.08);
+	descr.ker.matQ.set(3, 3, 0.02);
 //	descr.ker.matQ.set(4, 4, 0.0001);
 
 	// set P
@@ -220,8 +222,8 @@ void simulator_init(void) {
 
 	// set R: environment noise
 	descr.ker.matR.ones(0);
-	descr.ker.matR.set(0, 0, 0.25);
-	descr.ker.matR.set(1, 1, 2);
+	descr.ker.matR.set(0, 0, 0.04);
+	descr.ker.matR.set(1, 1, 1);
 	descr.ker.matR.set(2, 2, 0.5_kmh);
 //	descr.ker.matR.set(3, 3, 0.3);
 
@@ -250,7 +252,6 @@ void simulator_task(void) {
 	 *      ( h_b
 	 * Z =  ( h_gps
 	 *      ( speed
-	 *      ( h_p
 	 */
 	//float meas_hp = feed.dt * m_sens_state.speed * m_sens_state.acc[2] / m_sens_state.acc[0];
 
