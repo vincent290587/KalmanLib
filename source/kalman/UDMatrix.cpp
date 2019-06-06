@@ -209,7 +209,6 @@ UDMatrix UDMatrix::invert() {
 			if (j != i) {
 
 				temp = t_mat.m_data[j][i] / t_mat.m_data[i][i];
-				ASSERT (temp != (udm_type_t)0);
 
 				for (unsigned k = 0; k < 2 * order; k++) {
 
@@ -224,7 +223,7 @@ UDMatrix UDMatrix::invert() {
 	for (unsigned i = 0; i < order; i++) {
 
 		temp = t_mat.m_data[i][i];
-		ASSERT (temp != (udm_type_t)0);
+		ASSERT (std::isnormal(temp));
 
 		for (unsigned j = 0; j < order; j++) {
 
