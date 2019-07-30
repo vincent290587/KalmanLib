@@ -92,7 +92,7 @@ UDMatrix UDMatrix::operator *(UDMatrix& s_mat) {
 	return res;
 }
 
-UDMatrix UDMatrix::transpose() {
+UDMatrix UDMatrix::transpose() const {
 
 	UDMatrix res(this->m_colSize, this->m_rowSize);
 
@@ -149,13 +149,17 @@ void UDMatrix::print(const char *str) {
 		LOG_RAW_INFO("\r\n");
 	}
 
+	if (str) {
+		LOG_RAW_INFO("------------------------------", str);
+		LOG_RAW_INFO("\r\n");
+	}
 
 }
 
 /**
  * https://www.geeksforgeeks.org/finding-inverse-of-a-matrix-using-gauss-jordan-method/
  */
-UDMatrix UDMatrix::invert() {
+UDMatrix UDMatrix::invert() const {
 
 	ASSERT(this->m_colSize > 0);
 	ASSERT(this->m_rowSize > 0);
@@ -243,7 +247,7 @@ void UDMatrix::set(unsigned x, unsigned y, udm_type_t val) {
 
 }
 
-udm_type_t UDMatrix::get(unsigned x, unsigned y) {
+udm_type_t UDMatrix::get(unsigned x, unsigned y) const {
 
 	ASSERT(x < m_rowSize);
 	ASSERT(y < m_colSize);

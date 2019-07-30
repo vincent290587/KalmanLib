@@ -21,7 +21,7 @@ bool test_kalman_ext(void) {
 
 	LOG_INFO("Testing Kalman...");
 
-	int32_t num_periods = 20;
+	int32_t num_periods = 2000;
 	float sampling_hz = 10;
 	float omega = 2 * M_PI; // rad/s
 	uint16_t numOfData = 300;
@@ -81,8 +81,8 @@ bool test_kalman_ext(void) {
 		kalman_ext_feed(&descr, &feed);
 
 		UDMatrix res;
-		res = descr.ker.matX;
-		res.print();
+		res = descr.ker.matX.transpose();
+		res.print("X");
 	}
 
 	LOG_INFO("Simulated pos: %f", val);
@@ -138,7 +138,7 @@ bool test_kalman_lin(void) {
 		kalman_lin_feed(&descr, &feed);
 
 		UDMatrix res;
-		res = descr.ker.matX;
+		res = descr.ker.matX.transpose();
 		res.print("X");
 	}
 
