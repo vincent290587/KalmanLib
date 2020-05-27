@@ -15,8 +15,6 @@
 
 #define TEST_FILTRE_NB    15
 
-#define TEST_ROLLOF_NB    48759
-
 bool test_kalman_ext(void) {
 
 	LOG_INFO("Testing Kalman...");

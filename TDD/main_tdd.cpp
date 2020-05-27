@@ -19,9 +19,11 @@
 
 
 #include <fenv.h> // For feenableexcept
-#include <execinfo.h> // For backtrace and backtrace_symbols_fd
 #include <unistd.h> // For STDERR_FILENO
 #include <signal.h> // To register the signal handler
+
+#ifndef WIN32
+#include <execinfo.h> // For backtrace and backtrace_symbols_fd
 
 void print_backtrace(void)
 {
@@ -85,6 +87,8 @@ void pipeHandler( int signum ) {
 	exit(signum);
 }
 
+#endif
+
 void app_shutdown(void) {
 	LOG_INFO("App shutdown now");
 	exit(0);
@@ -96,6 +100,7 @@ void app_shutdown(void) {
  */
 int main(void)
 {
+#ifndef WIN32
 	// Enable exceptions for certain floating point results
 	feenableexcept(FE_INVALID   |
 			FE_DIVBYZERO |
@@ -117,20 +122,21 @@ int main(void)
 
 	sigaction(SIGFPE, &sa, NULL);
 	sigaction(SIGSEGV, &sa, NULL);
+#endif
 
 	LOG_INFO("Unit testing...");
 
-//	if (!test_kalman_ext()) {
-//		exit(__LINE__);
-//	}
+	if (!test_kalman_ext()) {
+		exit(__LINE__);
+	}
 
-//	if (!test_kalman_lin()) {
-//		exit(__LINE__);
-//	}
+	if (!test_kalman_lin()) {
+		exit(__LINE__);
+	}
 
-	simulator_init();
+	//simulator_init();
 
-	simulator_run();
+	//simulator_run();
 
 	LOG_INFO("End of program");
 
