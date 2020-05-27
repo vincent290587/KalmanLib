@@ -119,13 +119,24 @@ void kalman_lin_feed(sKalmanDescr *descr, sKalmanExtFeed *feed) {
 	descr->ker.matX = descr->ker.matXmi;
 	descr->ker.matX = descr->ker.matX + matKI;
 
-	// update covariance
-	UDMatrix matTmp;
+	// update covariance using Joseph's form
+	UDMatrix matIKH;
+	UDMatrix matIKHt;
+	UDMatrix matKRK;
+	UDMatrix matKt;
 	matKI.resize(descr->ker.ker_dim, descr->ker.ker_dim);
 	matKI.unity();
-	matTmp = descr->ker.matK * descr->ker.matC;
-	matKI = matKI - matTmp;
-	descr->ker.matP = matKI * descr->ker.matPmi;
+	matIKH = descr->ker.matK * descr->ker.matC;
+	matIKH = matKI - matIKH;
+	matIKHt = matIKH.transpose();
+	matKRK = descr->ker.matK * descr->ker.matR;
+	matKt = descr->ker.matK.transpose();
+	matKRK = matKRK * matKt;
+	descr->ker.matP = matIKH * descr->ker.matPmi;
+	descr->ker.matP = descr->ker.matP * matIKHt;
+	descr->ker.matP = descr->ker.matP + matKRK;
+
+
 
 }
 
@@ -159,7 +170,7 @@ void kalman_ext_feed(sKalmanDescr *descr, sKalmanExtFeed *feed) {
 	descr->ker.matPmi = descr->ker.matA * descr->ker.matP;
 	descr->ker.matPmi = descr->ker.matPmi * matAt;
 	descr->ker.matPmi = descr->ker.matPmi + descr->ker.matQ;
-	descr->ker.matPmi.bound(1e-5, 1e3);
+//	descr->ker.matPmi.bound(1e-5, 1e3);
 
 	// update extended kalman gain
 	UDMatrix matHt;
@@ -183,12 +194,21 @@ void kalman_ext_feed(sKalmanDescr *descr, sKalmanExtFeed *feed) {
 	descr->ker.matX = descr->ker.matXmi;
 	descr->ker.matX = descr->ker.matX + matKI;
 
-	// update covariance
-	UDMatrix matTmp;
+	// update covariance using Joseph's form
+	UDMatrix matIKH;
+	UDMatrix matIKHt;
+	UDMatrix matKRK;
+	UDMatrix matKt;
 	matKI.resize(descr->ker.ker_dim, descr->ker.ker_dim);
 	matKI.unity();
-	matTmp = descr->ker.matK * descr->ker_ext.matH;
-	matKI = matKI - matTmp;
-	descr->ker.matP = matKI * descr->ker.matPmi;
+	matIKH = descr->ker.matK * descr->ker_ext.matH;
+	matIKH = matKI - matIKH;
+	matIKHt = matIKH.transpose();
+	matKRK = descr->ker.matK * descr->ker.matR;
+	matKt = descr->ker.matK.transpose();
+	matKRK = matKRK * matKt;
+	descr->ker.matP = matIKH * descr->ker.matPmi;
+	descr->ker.matP = descr->ker.matP * matIKHt;
+	descr->ker.matP = descr->ker.matP + matKRK;
 
 }

@@ -22,7 +22,7 @@ public:
 	UDMatrix(UDMatrix &mat);
 	UDMatrix(unsigned _rowSize, unsigned _colSize);
 
-	udm_type_t get(unsigned x, unsigned y);
+	udm_type_t get(unsigned x, unsigned y) const;
 	void set(unsigned x, unsigned y, udm_type_t val);
 	void unity(udm_type_t res = (udm_type_t)1);
 	void ones(udm_type_t res = (udm_type_t)1);
@@ -39,8 +39,8 @@ public:
 	UDMatrix operator-(UDMatrix &s_mat);
 	UDMatrix operator*(UDMatrix &s_mat);
 
-	UDMatrix transpose();
-	UDMatrix invert();
+	UDMatrix transpose() const;
+	UDMatrix invert() const;
 
 protected:
 	unsigned m_rowSize;
